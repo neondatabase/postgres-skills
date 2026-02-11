@@ -19,5 +19,5 @@ Best practices and guidelines for working with Postgres. Covers schema design, i
 ## Installation
 
 ```bash
-npx add-skill neondatabase/postgres-skills
+npx skills add neondatabase/postgres-skills
 ```
