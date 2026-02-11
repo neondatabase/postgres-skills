@@ -1,0 +1,21 @@
+{
+  "name": "postgres-skills",
+  "owner": {
+    "name": "Andre Landgraf",
+    "email": "andre@neon.tech"
+  },
+  "metadata": {
+    "description": "Official Postgres best practices skills for coding agents",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "postgres-best-practices",
+      "source": "./",
+      "description": "Postgres best practices and guidelines",
+      "version": "1.0.0",
+      "category": "database",
+      "tags": ["postgres", "postgresql", "best-practices", "database"]
+    }
+  ]
+}

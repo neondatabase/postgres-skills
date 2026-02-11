@@ -1,0 +1,24 @@
+{
+  "name": "@neondatabase/postgres-skills",
+  "version": "1.0.0",
+  "description": "A collection of Agent Skills for Postgres best practices",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neondatabase/postgres-skills"
+  },
+  "author": {
+    "name": "Neon",
+    "url": "https://neon.tech"
+  },
+  "keywords": [
+    "postgres",
+    "postgresql",
+    "best-practices",
+    "agent-skills",
+    "claude-code"
+  ],
+  "scripts": {
+    "fmt": "npx prettier --write ."
+  }
+}
