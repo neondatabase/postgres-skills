@@ -5,7 +5,7 @@
     "email": "andre@neon.tech"
   },
   "metadata": {
-    "description": "Official Postgres best practices skills for coding agents",
+    "description": "Postgres best practices skills for coding agents",
     "version": "1.0.0"
   },
   "plugins": [

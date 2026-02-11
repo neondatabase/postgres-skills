@@ -2,10 +2,6 @@
   "name": "postgres-skills",
   "version": "1.0.0",
   "description": "Postgres best practices and guidelines for coding agents.",
-  "author": {
-    "name": "Neon",
-    "url": "https://neon.tech"
-  },
   "homepage": "https://github.com/neondatabase/postgres-skills",
   "repository": "https://github.com/neondatabase/postgres-skills",
   "license": "Apache-2.0",
