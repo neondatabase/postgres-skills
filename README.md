@@ -2,9 +2,11 @@
 
 A collection of [Agent Skills](https://agentskills.io/) for Postgres, curated from practitioners with years of real-world experience building and scaling applications on Postgres.
 
-## Goal
+## Installation
 
-Give every AI engineer instant access to the wisdom of a staff engineer who has seen what works and what fails in production Postgres. Once installed, these skills guide your agent toward proven patterns and away from common mistakes.
+```bash
+npx skills add neondatabase/postgres-skills
+```
 
 ## What are Agent Skills?
 
@@ -20,31 +22,28 @@ Each skill starts with a `SKILL.md` file that serves as the entry point, allowin
 
 Best practices and guidelines for working with Postgres. Covers schema design, indexing, query optimization, and common pitfalls.
 
-## Installation
 
-```bash
-npx skills add neondatabase/postgres-skills
-```
 
 ---
 
-## Guiding Principles for `postgres-skills`
+# About `postgres-skills`
 
-**Vendor-agnostic.** The skills are for Postgres users, regardless of which provider or deployment they use.
+## Goal
 
-**Curated contributors.** Content comes from well-known, credible Postgres practitioners with demonstrated real-world expertise.
+Give every AI engineer instant access to the collected experience of a staff engineer who has seen what works and what fails in production Postgres. Once installed, these skills guide your agent toward proven patterns and away from common mistakes.
 
-**Paid commissions.** Contributors are compensated for their time to keep the quality bar high.
+## Guiding Principles
 
----
+- **Vendor-agnostic.** The skills are for Postgres users, regardless of which provider or deployment they use.
+- **Curated contributors.** Content comes from well-known, credible Postgres practitioners with demonstrated real-world expertise.
+- **Paid commissions.** Contributors are compensated for their time to keep the quality bar high.
+
 
 ## Contributors
 
 **Stas Kelvich** — [REVIEWER] Cofounder of Neon and a long-time Postgres contributor. Deep experience with scaling and tuning Postgres for large production workloads.
 
 **Jonathan Katz** — [REVIEWER] PostgreSQL Core Team member and Principal Product Manager at AWS (Amazon RDS). Former VP of Platform Engineering at Crunchy Data. Active in the PostgreSQL community for over 15 years: co-chair of PGConf US, Secretary of the US PostgreSQL Association, and a contributor to pgvector. One of the most prolific writers and speakers on PostgreSQL fundamentals and best practices.
-
----
 
 ## Call for Contributors
 
@@ -54,8 +53,6 @@ We are looking for contributors with:
 - A track record of writing clearly about Postgres (blog posts, documentation, conference talks)
 
 All contributions are paid. Open an issue or reach out to start a conversation.
-
----
 
 ## AI Policy
 
