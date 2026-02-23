@@ -41,18 +41,19 @@ Give every AI engineer instant access to the collected experience of a staff eng
 
 ## Contributors
 
-**Stas Kelvich** — [REVIEWER] Cofounder of Neon and a long-time Postgres contributor. Deep experience with scaling and tuning Postgres for large production workloads.
+- **[Stas Kelvich](https://github.com/kelvich)** — [REVIEWER] Cofounder of Neon and a long-time Postgres contributor. Deep experience with scaling and tuning Postgres for large production workloads.
+- **[Jonathan Katz](https://github.com/jkatz)** — [REVIEWER] PostgreSQL Core Team member and Principal Product Manager at AWS (Amazon RDS). Active in the PostgreSQL community for over 15 years: co-chair of PGConf US, Secretary of the US PostgreSQL Association, and a contributor to pgvector.
+- **[You]** - If you have experience scaling Postgres and would like to contribute, please [reach out](#call-for-contributors).
 
-**Jonathan Katz** — [REVIEWER] PostgreSQL Core Team member and Principal Product Manager at AWS (Amazon RDS). Former VP of Platform Engineering at Crunchy Data. Active in the PostgreSQL community for over 15 years: co-chair of PGConf US, Secretary of the US PostgreSQL Association, and a contributor to pgvector. One of the most prolific writers and speakers on PostgreSQL fundamentals and best practices.
 
 ## Call for Contributors
 
-We are looking for contributors with:
+We are looking for skill contributors with:
 
 - Deep, proven experience helping a diverse set of applications build and scale on Postgres
 - A track record of writing clearly about Postgres (blog posts, documentation, conference talks)
 
-All contributions are paid. Open an issue or reach out to start a conversation.
+Skill contributions are paid. Open an issue or reach out to andy.hattemer@databricks.com if you're interested in contributing.
 
 ## AI Policy
 
