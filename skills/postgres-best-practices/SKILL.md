@@ -7,6 +7,16 @@ description: Best practices and guidelines for working with Postgres. Covers sch
 
 Guidelines and best practices for working with Postgres, covering schema design, indexing, query optimization, and common pitfalls.
 
+## Deployment Model Guardrail
+
+Before applying operational guidance, determine whether PostgreSQL is self-managed or provided as a managed service.
+
+- **Portable guidance** — SQL, schema, indexes, query plans, locking, transactions, RLS, vacuum behavior, TOAST, and fillfactor generally apply across deployment models.
+- **Provider-dependent guidance** — memory limits, connection limits, extensions, replication, backups, recovery, and observability may be configured or exposed differently by each provider.
+- **Self-managed guidance** — filesystem layout, PGDATA, tablespaces, WAL archiving, checkpoints, `fsync`, and server-start settings should only be changed when the user controls the PostgreSQL server.
+
+Explain low-level concepts when they help diagnosis, but do not recommend configuration, filesystem, backup, or recovery changes until you confirm the deployment permits them. For managed PostgreSQL, use the provider's skill and current documentation when available; provider-specific guidance takes precedence over this skill.
+
 ## Supported Versions
 
 This skill covers PostgreSQL 14 through 18. Version-specific features are tagged (e.g., `[PG15+]`, `[PG18+]`). All queries have been validated against PG14-PG18.
