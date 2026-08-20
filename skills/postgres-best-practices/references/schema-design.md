@@ -75,10 +75,11 @@ By default, NULLs are considered distinct in unique constraints (multiple NULLs 
 
 ```sql
 -- Standard: allows multiple rows with NULL in email
-CREATE UNIQUE INDEX idx_email ON users(email);
+CREATE UNIQUE INDEX idx_email_standard ON users(email);
 
 -- PG15+: only one NULL allowed
-CREATE UNIQUE INDEX idx_email ON users(email) NULLS NOT DISTINCT;
+CREATE UNIQUE INDEX idx_email_nulls_not_distinct
+    ON users(email) NULLS NOT DISTINCT;
 ```
 
 ### Naming Conventions
@@ -191,7 +192,7 @@ CREATE TABLE reservations (
 );
 ```
 
-This eliminates the need for `btree_gist` and manual exclusion constraints for non-overlapping range scenarios.
+This eliminates the need to write the exclusion constraint manually. The temporal key is implemented with GiST; scalar key columns such as `room_id int` still need an appropriate GiST operator class, supplied by `btree_gist` for common scalar types.
 
 ### NOT ENFORCED Constraints (PG18+)
 
@@ -284,7 +285,6 @@ ALTER TABLE events DETACH PARTITION events_2024_q1 CONCURRENTLY;
 - Partition key must be part of the primary key and all unique indexes
 - Indexes defined on parent are auto-created on child partitions
 - Foreign keys referencing partitioned tables are supported
-- Identity columns on partitioned tables require PG17+
 - Exclusion constraints on partitioned tables require PG17+ (equality on partition key only)
 
 ## Virtual Generated Columns (PG18+)
@@ -296,6 +296,7 @@ CREATE TABLE orders (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     quantity int NOT NULL,
     unit_price numeric(10,2) NOT NULL,
+    description text NOT NULL,
     -- Virtual: computed on read, no storage cost
     total numeric GENERATED ALWAYS AS (quantity * unit_price) VIRTUAL,
     -- Stored: persisted on disk, can be indexed

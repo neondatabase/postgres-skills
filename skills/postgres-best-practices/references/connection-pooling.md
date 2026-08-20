@@ -29,12 +29,17 @@ SELECT
     (SELECT setting::int FROM pg_settings WHERE name = 'superuser_reserved_connections') AS reserved
 FROM pg_stat_activity;
 
--- Memory per backend (approximate)
-SELECT pg_size_pretty(
-    (SELECT setting::bigint * 1024 FROM pg_settings WHERE name = 'work_mem') +
-    (SELECT setting::bigint * 1024 FROM pg_settings WHERE name = 'temp_buffers')
-) AS per_backend_estimate;
+-- Potential per-operation and per-session memory settings
+SELECT
+    name,
+    current_setting(name) AS configured_value,
+    pg_size_bytes(current_setting(name)) AS configured_bytes
+FROM pg_settings
+WHERE name IN ('work_mem', 'temp_buffers')
+ORDER BY name;
 ```
+
+These are not baseline allocations per backend. `work_mem` can be consumed by multiple query operations, while `temp_buffers` is allocated lazily when a session uses temporary tables.
 
 ## PgBouncer Configuration
 
@@ -196,7 +201,7 @@ psql -h 127.0.0.1 -p 6432 -U pgbouncer pgbouncer
 
 ### Key Commands
 
-```sql
+```text
 -- Pool status (most useful)
 SHOW POOLS;
 -- Columns: database, user, cl_active, cl_waiting, sv_active, sv_idle, sv_used, pool_mode
@@ -215,6 +220,8 @@ SHOW CONFIG;
 -- Memory usage
 SHOW MEM;
 ```
+
+These commands use PgBouncer's admin protocol and fail if sent directly to PostgreSQL.
 
 ### What to Watch
 

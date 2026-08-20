@@ -117,15 +117,19 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO repl_user;
 
 ### Decoder Plugins
 
-Postgres supports two decoder plugins:
+Postgres supports logical decoding output plugins, including:
 - **`pgoutput`** (default): built into Postgres, used by native logical replication
-- **`wal2json`**: converts WAL to JSON format, useful for CDC integrations (Debezium, etc.)
+- **`wal2json`**: an optional third-party plugin that converts WAL to JSON format for CDC integrations
 
 The decoder is specified when creating a replication slot manually:
 
 ```sql
 SELECT pg_create_logical_replication_slot('my_slot', 'pgoutput');
--- or
+```
+
+After installing `wal2json` on the database server:
+
+```sql
 SELECT pg_create_logical_replication_slot('my_slot', 'wal2json');
 ```
 
@@ -267,7 +271,7 @@ ALTER SUBSCRIPTION my_sub SET PUBLICATION new_pub;
 -- Add a publication
 ALTER SUBSCRIPTION my_sub ADD PUBLICATION extra_pub;
 
--- Remove a publication (PG17+)
+-- Remove a publication
 ALTER SUBSCRIPTION my_sub DROP PUBLICATION old_pub;
 ```
 
@@ -551,9 +555,11 @@ Initial sync speed depends on table size and network. For very large tables, con
 If the subscriber has conflicting data (e.g., duplicate key):
 
 ```sql
--- Check for errors in pg_stat_subscription
+-- PG15+: cumulative subscription apply-error counters
 SELECT * FROM pg_stat_subscription_stats;
 ```
+
+This view reports counters rather than detailed error messages. Check PostgreSQL server logs for the specific conflict; on PG14, logs are the primary source because `pg_stat_subscription_stats` is unavailable.
 
 **PG16+**: Skip a conflicting transaction:
 

@@ -75,7 +75,10 @@ CREATE INDEX idx_booking_range ON bookings USING gist(during);
 -- Matches: WHERE during && '[2024-01-01, 2024-02-01)'
 
 -- Used in exclusion constraints
-EXCLUDE USING gist (room_id WITH =, during WITH &&)
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+ALTER TABLE bookings
+    ADD CONSTRAINT bookings_no_overlap
+    EXCLUDE USING gist (room_id WITH =, during WITH &&);
 ```
 
 ### BRIN (Block Range Index)
@@ -159,7 +162,9 @@ CREATE INDEX idx_events_type ON events((payload->>'type'));
 -- Query: WHERE payload->>'type' = 'click'
 
 -- Date truncation
-CREATE INDEX idx_orders_month ON orders(date_trunc('month', created_at));
+-- timestamptz must be made timezone-independent for an immutable expression
+CREATE INDEX idx_orders_month
+    ON orders(date_trunc('month', created_at AT TIME ZONE 'UTC'));
 ```
 
 The query must use the same expression for the planner to match the index.
@@ -199,13 +204,20 @@ ALTER TABLE events ADD PRIMARY KEY (id, occurred_at);
 CREATE INDEX idx_events_q1_status ON events_2024_q1((payload->>'status'));
 ```
 
-- **CONCURRENTLY on partitioned tables**: `CREATE INDEX CONCURRENTLY` on a partitioned parent creates indexes on each partition one at a time, concurrently. This avoids locking the entire table during index builds on large partitioned tables.
+- **CONCURRENTLY on partitioned tables**: PostgreSQL does not support `CREATE INDEX CONCURRENTLY` directly on a partitioned parent. Create an invalid parent index with `ON ONLY`, build matching indexes concurrently on each partition, then attach them:
 
 ```sql
-CREATE INDEX CONCURRENTLY idx_events_customer ON events(customer_id);
+CREATE INDEX idx_events_customer
+    ON ONLY events ((payload->>'customer_id'));
+
+CREATE INDEX CONCURRENTLY idx_events_q1_customer
+    ON events_2024_q1 ((payload->>'customer_id'));
+
+ALTER INDEX idx_events_customer
+    ATTACH PARTITION idx_events_q1_customer;
 ```
 
-If a concurrent build fails on one partition, the parent index is marked `INVALID`. Fix the failed partition index, then run `ALTER INDEX idx_events_customer ATTACH PARTITION ...` or drop and retry.
+Repeat the concurrent build and attach steps for every partition. The parent index becomes valid after all partition indexes are attached. If a child build fails, drop or rebuild that invalid child index before attaching it.
 
 - **Index-only scans**: Work across partitions. The planner prunes irrelevant partitions first, then uses index-only scans on the remaining ones.
 

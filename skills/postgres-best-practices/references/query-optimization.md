@@ -266,11 +266,19 @@ Except for `shared_buffers`, these parameters can be overridden in the current s
 
 ```sql
 SET random_page_cost = 1.1;
-SET effective_io_concurrency = 200;
+-- Some platforms without posix_fadvise only support 0.
+DO $$
+BEGIN
+    PERFORM set_config('effective_io_concurrency', '200', false);
+EXCEPTION
+    WHEN invalid_parameter_value THEN
+        PERFORM set_config('effective_io_concurrency', '0', false);
+END
+$$;
 SET effective_cache_size = '24GB';  -- adjust to your server
 ```
 
-These make the planner prefer index scans (correct for SSDs where random reads are fast).
+These make the planner more willing to use index scans when measurements show SSD random reads are fast. Some platforms without asynchronous prefetch support cap `effective_io_concurrency` at `0`.
 
 ### Asynchronous I/O (PG18+)
 

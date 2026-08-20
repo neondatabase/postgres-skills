@@ -9,7 +9,7 @@ Guidelines and best practices for working with Postgres, covering schema design,
 
 ## Supported Versions
 
-This skill covers PostgreSQL 14 through 18. Version-specific features are tagged (e.g., `[PG15+]`, `[PG18+]`). All queries have been validated against PG14-PG18.
+This skill covers PostgreSQL 14 through 18. Version-specific features are tagged (e.g., `[PG15+]`, `[PG18+]`); environment-dependent examples identify required privileges, extensions, or multi-node setup.
 
 PostgreSQL provides 5 years of support per major version. Always run the latest minor release.
 

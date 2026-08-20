@@ -239,11 +239,13 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON orders
     USING (tenant_id = current_setting('app.current_tenant')::int);
 
--- Set per-connection
+-- Test through a non-owner application role; table owners bypass RLS by default.
+SET ROLE app_user;
 SET app.current_tenant = '42';
 
 -- All queries on orders now automatically filter by tenant_id = 42
 SELECT * FROM orders;  -- only sees tenant 42's orders
+RESET ROLE;
 ```
 
 ### Policy Types
@@ -252,29 +254,29 @@ SELECT * FROM orders;  -- only sees tenant 42's orders
 -- SELECT policy (restrict which rows can be read)
 CREATE POLICY read_own ON documents
     FOR SELECT
-    USING (owner_id = current_user_id());
+    USING (owner_id = current_setting('app.current_user_id')::bigint);
 
 -- INSERT policy (restrict which rows can be inserted)
 CREATE POLICY insert_own ON documents
     FOR INSERT
-    WITH CHECK (owner_id = current_user_id());
+    WITH CHECK (owner_id = current_setting('app.current_user_id')::bigint);
 
 -- UPDATE policy (restrict which rows can be updated, and what values are allowed)
 CREATE POLICY update_own ON documents
     FOR UPDATE
-    USING (owner_id = current_user_id())          -- which rows can be selected for update
-    WITH CHECK (owner_id = current_user_id());     -- what the row must look like after update
+    USING (owner_id = current_setting('app.current_user_id')::bigint)       -- rows selectable for update
+    WITH CHECK (owner_id = current_setting('app.current_user_id')::bigint); -- required post-update value
 
 -- DELETE policy
 CREATE POLICY delete_own ON documents
     FOR DELETE
-    USING (owner_id = current_user_id());
+    USING (owner_id = current_setting('app.current_user_id')::bigint);
 
 -- ALL (applies to all commands)
 CREATE POLICY full_access ON documents
     FOR ALL
-    USING (owner_id = current_user_id())
-    WITH CHECK (owner_id = current_user_id());
+    USING (owner_id = current_setting('app.current_user_id')::bigint)
+    WITH CHECK (owner_id = current_setting('app.current_user_id')::bigint);
 ```
 
 ### Multiple Policies
@@ -287,7 +289,7 @@ CREATE POLICY see_active ON orders
     USING (status = 'active');
 
 CREATE POLICY see_own ON orders
-    USING (user_id = current_user_id());
+    USING (user_id = current_setting('app.current_user_id')::bigint);
 -- User sees rows that are active OR owned by them
 
 -- Restrictive: combined with AND (with permissive policies)

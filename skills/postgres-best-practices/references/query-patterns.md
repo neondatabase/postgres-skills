@@ -232,8 +232,10 @@ INSERT INTO users (email, name)
 VALUES ('a@b.com', 'Alice')
 ON CONFLICT (email)
 DO UPDATE SET name = EXCLUDED.name
-RETURNING id, (xmax = 0) AS inserted;  -- true if inserted, false if updated
+RETURNING id;
 ```
+
+Do not use `(xmax = 0)` as an inserted-versus-updated contract; it relies on implementation details. On PG18+, use `OLD`/`NEW` in `RETURNING`. On earlier versions, distinguish outcomes in application logic or use separate statements when the distinction matters.
 
 ### OLD/NEW in RETURNING (PG18+)
 
@@ -389,7 +391,7 @@ UPDATE events SET payload = jsonb_set(payload, '{status,code}', '"200"');
 Simpler syntax for JSONB access and assignment:
 
 ```sql
--- Read (equivalent to payload->'address'->>'city')
+-- Read JSONB (equivalent to payload->'address'->'city')
 SELECT payload['address']['city'] FROM events;
 
 -- Update (equivalent to jsonb_set)

@@ -198,7 +198,7 @@ Use SERIALIZABLE to prevent write skew.
 
 ## SERIALIZABLE
 
-The strongest level. Transactions behave **as if they executed one at a time** (serially). PostgreSQL uses Serializable Snapshot Isolation (SSI) — an optimistic approach that detects conflicts at commit time rather than acquiring heavy locks upfront.
+The strongest level. Transactions behave **as if they executed one at a time** (serially). PostgreSQL uses Serializable Snapshot Isolation (SSI) — an optimistic approach that detects conflicts during statement execution or at commit rather than acquiring heavy locks upfront.
 
 ### Behavior
 
@@ -251,7 +251,7 @@ Keep transactions short regardless of isolation level.
 
 ### Pitfall: Mixing Isolation Levels
 
-If Transaction A is SERIALIZABLE but Transaction B is READ COMMITTED, you only get SERIALIZABLE guarantees for A's view of the data. B can still see intermediate states. For full serializable behavior, **all participating transactions** must use SERIALIZABLE.
+If Transaction A is SERIALIZABLE but Transaction B is READ COMMITTED, you only get SERIALIZABLE guarantees for A's view of the data. B never sees uncommitted intermediate states, but it can observe newer committed states between statements and produce non-serializable outcomes. For full serializable behavior, **all participating transactions** must use SERIALIZABLE.
 
 ### Pitfall: DDL and Isolation
 

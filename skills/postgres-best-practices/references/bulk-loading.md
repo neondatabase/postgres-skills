@@ -124,7 +124,7 @@ COPY orders FROM '/path/to/orders.csv' WITH (FORMAT csv, HEADER true);
 ALTER TABLE orders ENABLE TRIGGER ALL;
 ```
 
-Requires table owner or superuser privileges.
+`DISABLE TRIGGER ALL` requires superuser privileges when the table has foreign-key or other internally generated constraint triggers. A table owner can use `DISABLE TRIGGER USER` to disable only user-defined triggers. Disabling constraint triggers can admit invalid data, so validate constraints before re-enabling writes.
 
 ### 3. Increase maintenance_work_mem
 
@@ -243,11 +243,13 @@ DROP TABLE orders_old;
 COMMIT;
 ```
 
+`LIKE ... INCLUDING ALL` does not copy foreign keys, triggers, rules, grants, row-level security policies, or publication membership. Recreate and verify those objects before swapping, or use a data-only refresh when the original table's identity and dependencies must remain unchanged.
+
 ## Bulk Updates and Deletes
 
-### Batched Deletes
+### Chunked Deletes
 
-Large DELETEs lock rows and generate WAL. Batch them:
+Large DELETEs lock rows and generate WAL. This loop limits each statement to 10,000 rows:
 
 ```sql
 -- Delete in batches of 10,000
@@ -270,9 +272,11 @@ BEGIN
 END $$;
 ```
 
-### Batched Updates
+The entire `DO` block is still one transaction: locks, WAL, and dead rows accumulate until it finishes. For true transaction-level batching, execute one limited DELETE per client transaction and commit between batches.
 
-Same pattern for large updates:
+### Chunked Updates
+
+The same statement-size pattern works for large updates:
 
 ```sql
 DO $$
@@ -294,6 +298,8 @@ BEGIN
     END LOOP;
 END $$;
 ```
+
+As with the DELETE loop, the `DO` block commits only once. Drive batches from the client or a transaction-controlling procedure invoked outside an explicit transaction when each batch must commit independently.
 
 ### Partition Drop Instead of Delete
 

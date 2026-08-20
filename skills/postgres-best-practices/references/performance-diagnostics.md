@@ -66,7 +66,7 @@ LIMIT 20;
 
 `dead_pct` > 20% = VACUUM is falling behind. Check autovacuum settings.
 
-### Table Bloat Estimate
+### Relation Storage Breakdown
 
 ```sql
 SELECT
@@ -83,7 +83,7 @@ ORDER BY pg_total_relation_size(schemaname || '.' || tablename) DESC
 LIMIT 20;
 ```
 
-For precise bloat estimation, use the `pgstattuple` extension (requires superuser or elevated privileges):
+This separates heap size from indexes and TOAST; it is not a bloat estimate. For bloat measurements, use the `pgstattuple` extension (requires superuser or elevated privileges):
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pgstattuple;
@@ -190,10 +190,10 @@ CREATE EXTENSION IF NOT EXISTS pg_buffercache;
 
 SELECT
     c.relname,
-    pg_size_pretty(count(*) * 8192) AS buffered,
+    pg_size_pretty(count(*) * current_setting('block_size')::bigint) AS buffered,
     round(100.0 * count(*) / (SELECT setting::int FROM pg_settings WHERE name = 'shared_buffers'), 1) AS pct_of_cache
 FROM pg_buffercache b
-JOIN pg_class c ON c.relfilenode = b.relfilenode
+JOIN pg_class c ON pg_relation_filenode(c.oid) = b.relfilenode
 WHERE b.reldatabase = (SELECT oid FROM pg_database WHERE datname = current_database())
 GROUP BY c.relname
 ORDER BY count(*) DESC
@@ -209,15 +209,22 @@ FK columns without indexes cause slow JOINs and slow CASCADE deletes:
 ```sql
 SELECT
     c.conrelid::regclass AS table_name,
-    a.attname AS fk_column,
-    c.conname AS constraint_name
+    c.conname AS constraint_name,
+    pg_get_constraintdef(c.oid) AS constraint_definition
 FROM pg_constraint c
-JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey)
 WHERE c.contype = 'f'
     AND NOT EXISTS (
         SELECT 1 FROM pg_index i
         WHERE i.indrelid = c.conrelid
-            AND a.attnum = ANY(i.indkey)
+            AND i.indisvalid
+            AND i.indpred IS NULL
+            AND i.indnkeyatts >= cardinality(c.conkey)
+            AND (
+                SELECT array_agg(key_attnum ORDER BY ordinality)
+                FROM unnest(i.indkey::smallint[]) WITH ORDINALITY
+                    AS keys(key_attnum, ordinality)
+                WHERE ordinality <= cardinality(c.conkey)
+            ) = c.conkey
     );
 ```
 
@@ -275,12 +282,15 @@ ORDER BY duration DESC;
 ### Cancel or Terminate a Query
 
 ```sql
--- Graceful cancel (sends cancel signal)
-SELECT pg_cancel_backend(pid);
+-- Replace 12345 with a PID selected from pg_stat_activity.
+-- Graceful cancel (sends a cancel signal)
+SELECT pg_cancel_backend(12345);
 
 -- Force terminate (kills the connection)
-SELECT pg_terminate_backend(pid);
+SELECT pg_terminate_backend(12345);
 ```
+
+Do not target your current session (`pg_backend_pid()`). Prefer cancellation first; terminate only when cancellation does not resolve the problem.
 
 ## Lock Analysis
 
@@ -325,13 +335,15 @@ WHERE NOT bl.granted AND kl.granted;
 For application-level coordination without row locking:
 
 ```sql
--- Acquire (blocks until available)
+-- Choose one acquisition method, not both.
+-- Blocking acquisition:
 SELECT pg_advisory_lock(hashtext('my_job_name'));
 
--- Try (non-blocking, returns boolean)
-SELECT pg_try_advisory_lock(hashtext('my_job_name'));
+-- Release once for each successful session-level acquisition:
+SELECT pg_advisory_unlock(hashtext('my_job_name'));
 
--- Release
+-- Or use a non-blocking acquisition:
+SELECT pg_try_advisory_lock(hashtext('my_job_name'));
 SELECT pg_advisory_unlock(hashtext('my_job_name'));
 ```
 

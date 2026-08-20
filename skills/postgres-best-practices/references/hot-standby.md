@@ -94,7 +94,8 @@ FROM pg_stat_replication;
 ```sql
 SELECT
     status,
-    received_lsn,
+    written_lsn,
+    flushed_lsn,
     latest_end_lsn,
     latest_end_time,
     slot_name,

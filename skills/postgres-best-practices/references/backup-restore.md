@@ -88,10 +88,12 @@ pg_restore -d mydb --data-only backup.dump
 # Clean (drop) objects before recreating
 pg_restore -d mydb --clean --if-exists backup.dump
 
-# Continue on errors (useful for partial restores)
+# Restore atomically and stop on the first error
 pg_restore -d mydb --single-transaction -j 1 backup.dump
 # Note: --single-transaction is incompatible with -j > 1
 ```
+
+Selective restore patterns do not automatically include dependencies. Schema-qualify table patterns when names may exist in multiple schemas, and verify required types, sequences, constraints, and referenced tables separately.
 
 ### Restoring Plain SQL Dumps
 
@@ -144,9 +146,8 @@ Without statistics, the planner uses default estimates after restore until `ANAL
 5. **Drop indexes before restore, recreate after** — faster than incremental index maintenance during bulk inserts
 6. **Restore schema first, then data, then indexes**:
    ```bash
-   pg_restore -d mydb --schema-only backup.dump
+   pg_restore -d mydb --section=pre-data backup.dump
    pg_restore -d mydb --data-only -j 4 backup.dump
-   # Then recreate indexes (already created by schema restore, but if you dropped them:)
    pg_restore -d mydb --section=post-data -j 4 backup.dump
    ```
 
@@ -251,7 +252,7 @@ recovery_target_action = 'promote'    # 'pause' to inspect before promoting
 
 ### Recovery Target Options
 
-```sql
+```text
 -- Recover to a specific time
 recovery_target_time = '2024-06-15 14:30:00+00'
 
@@ -290,8 +291,11 @@ This gives you an exact target to recover to if the operation goes wrong.
 # List contents without restoring
 pg_restore --list backup.dump
 
-# Verify a physical backup (PG17+: also works with tar format)
+# Verify a plain-format physical backup (PG13+)
 pg_verifybackup /backup/base_20240615
+
+# PG18+: verify a tar-format backup directly
+pg_verifybackup --no-parse-wal /backup/base_tar_20240615
 ```
 
 ### Test Restores Regularly
