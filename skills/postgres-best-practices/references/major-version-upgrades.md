@@ -226,8 +226,11 @@ Never upgrade production first. Test on a copy:
 # Create a test copy
 pg_basebackup -D /tmp/upgrade_test -Fp -Xs -P
 
+# Initialize an empty target cluster with the new version's binaries
+/usr/lib/postgresql/17/bin/initdb -D /tmp/new_cluster
+
 # Run pg_upgrade --check against the copy
-pg_upgrade --check \
+/usr/lib/postgresql/17/bin/pg_upgrade --check \
     --old-datadir /tmp/upgrade_test \
     --new-datadir /tmp/new_cluster \
     --old-bindir /usr/lib/postgresql/16/bin \

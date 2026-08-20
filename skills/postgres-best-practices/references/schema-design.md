@@ -173,6 +173,8 @@ This prevents overlapping bookings for the same room at the database level.
 PG18 adds built-in temporal constraint support, simplifying the exclusion constraint pattern above:
 
 ```sql
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 CREATE TABLE room_bookings (
     room_id int NOT NULL,
     during tstzrange NOT NULL,

@@ -382,7 +382,10 @@ SELECT
     now() - st.latest_end_time AS time_lag
 FROM pg_subscription s
 JOIN pg_stat_subscription st ON st.subid = s.oid
-WHERE st.pid IS NOT NULL;
+WHERE st.pid IS NOT NULL
+    AND st.relid IS NULL
+    -- PG17+ can also expose parallel apply workers; keep only the leader.
+    AND coalesce(to_jsonb(st)->>'worker_type', 'apply') = 'apply';
 ```
 
 ## Schema Changes During Replication
