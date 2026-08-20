@@ -77,9 +77,9 @@ JOIN pg_roles m ON m.oid = am.member
 ORDER BY r.rolname, m.rolname;
 ```
 
-### Predefined Roles (PG14+)
+### Predefined Roles
 
-PostgreSQL provides built-in roles for common needs:
+PostgreSQL provides system-defined roles for common privileged capabilities. PostgreSQL 13 and earlier documentation called these "default roles"; PostgreSQL 14 renamed the category to "predefined roles." Individual roles were introduced in different releases.
 
 | Role | Grants |
 |------|--------|
@@ -90,7 +90,7 @@ PostgreSQL provides built-in roles for common needs:
 | `pg_monitor` | Read monitoring views (`pg_stat_*`, `pg_locks`, etc.) |
 | `pg_signal_backend` | Send signals to other backends (cancel/terminate) |
 | `pg_checkpoint` (PG15+) | Run CHECKPOINT |
-| `pg_maintain` (PG15+) | Run VACUUM, ANALYZE, REINDEX, CLUSTER, REFRESH MATERIALIZED VIEW |
+| `pg_maintain` (PG17+) | Run VACUUM, ANALYZE, REINDEX, CLUSTER, REFRESH MATERIALIZED VIEW, and LOCK TABLE on all relations |
 
 ```sql
 -- Give a monitoring role read access to all stats
@@ -217,13 +217,13 @@ ALTER ROLE app_user SET search_path = app, public;
 -- For functions: use SECURITY DEFINER carefully
 CREATE FUNCTION get_balance(account_id int) RETURNS numeric
     SECURITY DEFINER
-    SET search_path = app, pg_temp  -- pin the search path
+    SET search_path = pg_catalog, pg_temp
 AS $$
     SELECT balance FROM app.accounts WHERE id = account_id;
 $$ LANGUAGE sql;
 ```
 
-**Always set `search_path` in `SECURITY DEFINER` functions** to prevent search path manipulation attacks.
+**Always give `SECURITY DEFINER` functions a fixed `search_path` containing only trusted schemas.** Explicitly list `pg_temp` last: if it is omitted, PostgreSQL searches the session's temporary schema first for relations and data types, which can allow temporary objects to shadow intended objects. When application objects are fully qualified, prefer `pg_catalog, pg_temp`; otherwise list only trusted application schemas followed by `pg_temp`.
 
 ## Row-Level Security (RLS)
 

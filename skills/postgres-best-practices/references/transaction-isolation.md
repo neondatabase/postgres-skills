@@ -275,53 +275,70 @@ DDL statements (ALTER TABLE, CREATE INDEX) always acquire strong locks regardles
 
 ```python
 # Python example (psycopg)
-import psycopg
-from psycopg.errors import SerializationFailure
+import random
+import time
 
-MAX_RETRIES = 3
+import psycopg
+from psycopg.errors import DeadlockDetected, SerializationFailure
+
+MAX_RETRIES = 5
+BASE_DELAY_SECONDS = 0.01
+MAX_DELAY_SECONDS = 0.5
 
 for attempt in range(MAX_RETRIES):
     try:
+        # This must be a top-level transaction, not a savepoint inside one.
         with conn.transaction():
+            conn.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
             conn.execute("UPDATE accounts SET balance = balance - 100 WHERE id = 1")
             conn.execute("UPDATE accounts SET balance = balance + 100 WHERE id = 2")
         break  # success
-    except SerializationFailure:
+    except (SerializationFailure, DeadlockDetected):
         if attempt == MAX_RETRIES - 1:
             raise  # give up after max retries
-        continue  # retry the entire transaction
+
+        # Bounded exponential backoff with jitter reduces repeated collisions.
+        delay = min(MAX_DELAY_SECONDS, BASE_DELAY_SECONDS * (2 ** attempt))
+        time.sleep(random.uniform(delay / 2, delay))
 ```
 
 ### Key Retry Rules
 
 1. **Retry the entire transaction** — not just the failed statement
-2. **Use a bounded retry count** — avoid infinite loops (3-5 retries is typical)
-3. **Don't add sleep/backoff** for serialization retries — they're usually instant to resolve
-4. **Log retries** for monitoring — frequent retries indicate high contention
-5. **SQLSTATE 40001** is the error code to catch (serialization failure)
-6. **SQLSTATE 40P01** is deadlock — also safe to retry with the same pattern
+2. **Re-run all reads and decision-making** — transaction inputs may no longer be valid after a conflict
+3. **Use a bounded retry count** — avoid infinite retry loops
+4. **Use bounded exponential backoff with jitter** — concurrent retriers should not repeatedly collide; tune the delays for the workload
+5. **Log retries and exhaustion** — frequent retries indicate contention or transaction-design problems
+6. **SQLSTATE 40001** is the error code to catch (`serialization_failure`)
+7. **SQLSTATE 40P01** is deadlock (`deadlock_detected`) — it can be retried, but also fix inconsistent lock ordering where possible
+8. **Do not publish external side effects before commit** — messages, emails, and API calls can otherwise be duplicated by a retry
 
-### PL/pgSQL Retry
+PostgreSQL requires retrying the complete transaction and warns that multiple attempts may be needed. See [Serialization Failure Handling](https://www.postgresql.org/docs/current/mvcc-serialization-failure-handling.html).
+
+### PL/pgSQL Procedure for the Transaction Body
+
+A PL/pgSQL function cannot retry a complete transaction. An `EXCEPTION` block rolls back only its subtransaction; retrying the block remains inside the same top-level transaction and uses the same transaction snapshot at REPEATABLE READ or SERIALIZABLE.
+
+A procedure can encapsulate the database work, but the application should still own the complete transaction and retry loop:
 
 ```sql
-CREATE OR REPLACE FUNCTION transfer_funds(from_id int, to_id int, amount numeric)
-RETURNS void AS $$
-DECLARE
-    retries int := 0;
+CREATE OR REPLACE PROCEDURE transfer_funds(
+    p_from_id int,
+    p_to_id int,
+    p_amount numeric
+)
+LANGUAGE plpgsql
+AS $$
 BEGIN
-    LOOP
-        BEGIN
-            UPDATE accounts SET balance = balance - amount WHERE id = from_id;
-            UPDATE accounts SET balance = balance + amount WHERE id = to_id;
-            RETURN;
-        EXCEPTION
-            WHEN serialization_failure OR deadlock_detected THEN
-                retries := retries + 1;
-                IF retries >= 3 THEN
-                    RAISE;
-                END IF;
-        END;
-    END LOOP;
+    UPDATE accounts
+    SET balance = balance - p_amount
+    WHERE id = p_from_id;
+
+    UPDATE accounts
+    SET balance = balance + p_amount
+    WHERE id = p_to_id;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 ```
+
+Invoke `CALL transfer_funds(...)` inside the application-managed transaction and retry that entire transaction from the application. A serialization failure can occur at commit, so a procedure cannot reliably catch every failure and restart itself.

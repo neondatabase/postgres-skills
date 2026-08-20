@@ -249,11 +249,11 @@ WHERE tablename = 'orders' AND attname = 'status';
 
 ## Configuration Tuning Knobs
 
-These are per-session overridable. Test with `SET` before changing `postgresql.conf`.
+Except for `shared_buffers`, these parameters can be overridden in the current session with `SET` for workload-specific testing. `shared_buffers` is allocated at server start; persisting a change in `postgresql.conf` or with `ALTER SYSTEM` requires a restart before it takes effect.
 
 | Parameter | Default | When to increase |
 |-----------|---------|-----------------|
-| `shared_buffers` | 128MB | Set to ~25% of total RAM. See performance-diagnostics for cache hit rate queries |
+| `shared_buffers` | 128MB | Server-wide, restart-required setting; start around 25% of total RAM and validate for the workload. See performance-diagnostics for cache hit rate queries |
 | `work_mem` | 4MB | Sort/hash spilling to disk |
 | `maintenance_work_mem` | 64MB | Slow VACUUM, CREATE INDEX, ALTER TABLE |
 | `effective_cache_size` | 4GB | Set to ~75% of total RAM (hint to planner, no allocation) |

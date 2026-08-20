@@ -112,11 +112,11 @@ CREATE TABLE orders (
 
 | Action | Use when |
 |--------|----------|
-| `RESTRICT` (default) | Prevent accidental deletion of referenced rows |
+| `NO ACTION` (default) | Reject the update or deletion if a violation remains when the constraint is checked; the check can be deferred when the foreign key is deferrable and currently deferred |
+| `RESTRICT` | Reject the referenced operation immediately; the check cannot be deferred |
 | `CASCADE` | Child rows are meaningless without parent (e.g., order_items when order is deleted) |
 | `SET NULL` | Relationship is optional, preserve child row |
-| `SET DEFAULT` | Rare; reassign to a default parent |
-| `NO ACTION` | Like RESTRICT but deferrable |
+| `SET DEFAULT` | Rare; reassign to a valid default parent |
 
 ### Deferrable Foreign Keys
 

@@ -334,12 +334,22 @@ WHERE subname IS NOT NULL;
 
 -- Per-table sync state (initial copy progress)
 SELECT
-    srsubid::regclass AS subscription,
-    srrelid::regclass AS table_name,
-    srsubstate AS state,
-    -- 'i' = init, 'd' = data copy, 'f' = finished table copy, 's' = synced, 'r' = ready
-    srsublsn AS lsn
-FROM pg_subscription_rel;
+    s.subname AS subscription,
+    sr.srrelid::regclass AS table_name,
+    sr.srsubstate AS state,
+    CASE sr.srsubstate
+        WHEN 'i' THEN 'initialize'
+        WHEN 'd' THEN 'data is being copied'
+        WHEN 'f' THEN 'finished table copy'
+        WHEN 's' THEN 'synchronized'
+        WHEN 'r' THEN 'ready (normal replication)'
+        ELSE 'unknown'
+    END AS state_meaning,
+    sr.srsublsn AS lsn
+FROM pg_catalog.pg_subscription_rel AS sr
+JOIN pg_catalog.pg_subscription AS s
+  ON s.oid = sr.srsubid
+ORDER BY s.subname, sr.srrelid::regclass::text;
 ```
 
 **State codes for `pg_subscription_rel.srsubstate`:**
@@ -351,6 +361,8 @@ FROM pg_subscription_rel;
 | `f` | Finished table copy, waiting for sync |
 | `s` | Synced with publisher |
 | `r` | Ready (streaming) |
+
+These codes describe each table's initialization state. `s` means the table synchronized during initialization; it does not prove that current replication lag is zero.
 
 ### Replication Lag Monitoring Query
 
@@ -435,12 +447,17 @@ Logical replication does **NOT** replicate sequences. Before cutover, sync them:
 
 ```sql
 -- On SOURCE: get current sequence values
-SELECT sequencename, last_value
+SELECT schemaname, sequencename, last_value
 FROM pg_sequences
 WHERE schemaname = 'public';
 
--- On TARGET: set sequences to match (add buffer for safety)
-SELECT setval('orders_id_seq', (SELECT last_value FROM pg_sequences WHERE sequencename = 'orders_id_seq') + 1000);
+-- On TARGET: substitute the value obtained from the source.
+-- Add a buffer only if writes can still reach the source during cutover.
+SELECT pg_catalog.setval(
+    'public.orders_id_seq'::regclass,
+    <source_last_value> + 1000,
+    true
+);
 ```
 
 ### Row Count Verification
@@ -459,15 +476,41 @@ ORDER BY relname;
 For exact counts (slower):
 
 ```sql
+CREATE TEMP TABLE exact_row_counts (
+    schemaname name NOT NULL,
+    tablename name NOT NULL,
+    exact_count bigint NOT NULL
+);
+
 DO $$
 DECLARE r record;
 BEGIN
-    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename
+    FOR r IN
+        SELECT schemaname, tablename
+        FROM pg_catalog.pg_tables
+        WHERE schemaname = 'public'
+        ORDER BY tablename
     LOOP
-        EXECUTE format('SELECT %L AS table_name, count(*) AS exact_count FROM %I', r.tablename, r.tablename);
+        EXECUTE format(
+            'INSERT INTO pg_temp.exact_row_counts
+             SELECT %L::name, %L::name, count(*)
+             FROM %I.%I',
+            r.schemaname, r.tablename,
+            r.schemaname, r.tablename
+        );
     END LOOP;
 END $$;
+
+SELECT
+    format('%I.%I', schemaname, tablename) AS table_name,
+    exact_count
+FROM pg_temp.exact_row_counts
+ORDER BY schemaname, tablename;
+
+DROP TABLE pg_temp.exact_row_counts;
 ```
+
+Run the exact-count query on both source and target only after stopping writes and allowing replication lag to drain. It performs a full scan of every selected table.
 
 ## Troubleshooting
 

@@ -180,7 +180,7 @@ pg_basebackup -h primary_host -U repl_user -D /backup/base -Fp -Xs -P
 
 ### Prerequisites
 
-The user running `pg_basebackup` needs `REPLICATION` privilege or membership in `pg_write_server_files`:
+The connection used by `pg_basebackup` must authenticate as a superuser or a role with `REPLICATION` privilege. `max_wal_senders` must also have enough capacity for the backup connection:
 
 ```sql
 -- On the primary
@@ -192,6 +192,8 @@ And `pg_hba.conf` must allow replication connections:
 ```
 host    replication     backup_user     backup_server_ip/32     scram-sha-256
 ```
+
+[PG15+] `--target=server:/path` writes the backup on the database server. A non-superuser using this target needs both `REPLICATION` privilege for the backup connection and membership in `pg_write_server_files` for the server-side write. `--target` is unavailable in PG14 and cannot be combined with `-Xstream`; use `-Xfetch` or `-Xnone`.
 
 ## Point-in-Time Recovery (PITR)
 
@@ -259,12 +261,15 @@ recovery_target_xid = '12345678'
 -- Recover to a named restore point
 recovery_target_name = 'before_migration'
 
--- Recover to end of available WAL (latest possible state)
+-- Stop as soon as a consistent state is reached
+-- (for an online backup, normally the point where the backup ended)
 recovery_target = 'immediate'
 
 -- Recover to a specific WAL position
 recovery_target_lsn = '0/1A2B3C4D'
 ```
+
+To recover through the end of all available WAL, omit every `recovery_target*` setting. `recovery_target = 'immediate'` is an explicit early stopping target, so later available WAL can remain unapplied. PostgreSQL may still replay the WAL required to make an online backup consistent.
 
 ### Creating Named Restore Points
 
